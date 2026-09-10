@@ -9,6 +9,7 @@ import com.cuadernoestudiante.app.data.demo.DemoStudentRepository
 import com.cuadernoestudiante.app.ui.AppLanguagePrefs
 import com.cuadernoestudiante.app.ui.LocalAppLanguage
 import com.cuadernoestudiante.app.ui.theme.AgendaThemeStyle
+import com.cuadernoestudiante.app.ui.theme.AppFontStyle
 import com.cuadernoestudiante.app.ui.theme.NotebookBackground
 import com.cuadernoestudiante.app.ui.theme.StudentTheme
 
@@ -21,29 +22,21 @@ class MainActivity : ComponentActivity() {
         setContent {
             val studentViewModel: StudentViewModel = viewModel(factory = StudentViewModel.Factory(repository))
             val appLanguage = remember { AppLanguagePrefs.load(this@MainActivity) }
-            var familyTheme by remember {
-                mutableStateOf(
-                    AgendaThemeStyle.entries.firstOrNull { it.key == prefs.getString("theme", null) }
-                        ?: AgendaThemeStyle.MINT_LAVENDER
-                )
-            }
+            var familyTheme by remember { mutableStateOf(AgendaThemeStyle.entries.firstOrNull { it.key == prefs.getString("theme", null) } ?: AgendaThemeStyle.MINT_LAVENDER) }
             var classCode by remember { mutableStateOf(prefs.getString("class_code", "") ?: "") }
+            val darkMode = prefs.getBoolean("ui_dark", false)
+            val fontScale = prefs.getFloat("font_scale", 1f)
+            val fontStyle = AppFontStyle.fromKey(prefs.getString("font_style", null))
 
             CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
-                StudentTheme(style = familyTheme) {
+                StudentTheme(style = familyTheme, darkMode = darkMode, fontScale = fontScale, fontStyle = fontStyle) {
                     NotebookBackground(style = familyTheme) {
                         StudentApp(
                             viewModel = studentViewModel,
                             currentTheme = familyTheme,
                             classCode = classCode,
-                            onThemeChange = {
-                                familyTheme = it
-                                prefs.edit().putString("theme", it.key).apply()
-                            },
-                            onClassCodeChange = {
-                                classCode = it
-                                prefs.edit().putString("class_code", it).apply()
-                            }
+                            onThemeChange = { familyTheme = it; prefs.edit().putString("theme", it.key).apply() },
+                            onClassCodeChange = { classCode = it; prefs.edit().putString("class_code", it).apply() }
                         )
                     }
                 }
