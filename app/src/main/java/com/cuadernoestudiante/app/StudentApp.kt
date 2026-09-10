@@ -14,9 +14,17 @@ import com.cuadernoestudiante.app.ui.navigation.AppDestination
 import com.cuadernoestudiante.app.ui.navigation.ExtraRoute
 import com.cuadernoestudiante.app.ui.screens.common.PlaceholderScreen
 import com.cuadernoestudiante.app.ui.screens.home.HomeScreen
+import com.cuadernoestudiante.app.ui.screens.profile.StudentSettingsScreen
+import com.cuadernoestudiante.app.ui.theme.AgendaThemeStyle
 
 @Composable
-fun StudentApp(viewModel: StudentViewModel) {
+fun StudentApp(
+    viewModel: StudentViewModel,
+    currentTheme: AgendaThemeStyle,
+    classCode: String,
+    onThemeChange: (AgendaThemeStyle) -> Unit,
+    onClassCodeChange: (String) -> Unit,
+) {
     val navController = rememberNavController()
     val snapshot by viewModel.snapshot.collectAsStateWithLifecycle()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -27,9 +35,7 @@ fun StudentApp(viewModel: StudentViewModel) {
         containerColor = Color.Transparent,
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-                ) {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)) {
                     AppDestination.bottomItems.forEach { destination ->
                         NavigationBarItem(
                             selected = currentRoute == destination.route,
@@ -64,28 +70,33 @@ fun StudentApp(viewModel: StudentViewModel) {
                 )
             }
             composable(AppDestination.Subjects.route) {
-                PlaceholderScreen("Materias", "La estructura y los datos demo ya están listos; esta será la siguiente pantalla.")
+                PlaceholderScreen("Materias", "Solo muestra las materias vinculadas al código de clase del estudiante.")
             }
             composable(AppDestination.Calendar.route) {
-                PlaceholderScreen("Calendario", "Ruta preparada para Hoy, Esta semana y Mes.")
+                PlaceholderScreen("Calendario", "Reúne actividades y eventos publicados por los docentes de las clases vinculadas.")
             }
             composable(AppDestination.Progress.route) {
                 PlaceholderScreen("Mi progreso", "La lógica distingue Sin evaluar de una calificación real de cero.")
             }
             composable(AppDestination.Profile.route) {
-                PlaceholderScreen("Perfil", "Perfil de solo lectura preparado para datos del estudiante autenticado.")
+                StudentSettingsScreen(
+                    currentTheme = currentTheme,
+                    classCode = classCode,
+                    onThemeChange = onThemeChange,
+                    onClassCodeChange = onClassCodeChange,
+                )
             }
             composable(ExtraRoute.Notices) {
-                PlaceholderScreen("Avisos", "Bandeja académica de profesor y Dirección.")
+                PlaceholderScreen("Avisos", "Aquí aparecerán avisos de tus docentes. Los avisos internos de Dirección dirigidos solo a docentes no son visibles para alumnos.")
             }
             composable(ExtraRoute.Pending) {
-                PlaceholderScreen("Pendientes", "Lista de entregas, exámenes y proyectos próximos.")
+                PlaceholderScreen("Pendientes", "Lista de entregas, exámenes y proyectos próximos de tus clases vinculadas.")
             }
             composable(ExtraRoute.Attendance) {
                 PlaceholderScreen("Asistencia", "Consulta de asistencia; el estudiante no puede modificar registros.")
             }
             composable(ExtraRoute.Schedule) {
-                PlaceholderScreen("Horario", "Horario de solo lectura; en el futuro lo publicará Dirección.")
+                PlaceholderScreen("Horario", "Horario de solo lectura de las clases vinculadas por código.")
             }
         }
     }
