@@ -15,6 +15,7 @@ import com.cuadernoestudiante.app.ui.navigation.ExtraRoute
 import com.cuadernoestudiante.app.ui.screens.common.PlaceholderScreen
 import com.cuadernoestudiante.app.ui.screens.home.HomeScreen
 import com.cuadernoestudiante.app.ui.screens.profile.StudentSettingsScreen
+import com.cuadernoestudiante.app.ui.screens.subjects.StudentResourcesScreen
 import com.cuadernoestudiante.app.ui.theme.AgendaThemeStyle
 
 @Composable
@@ -70,7 +71,7 @@ fun StudentApp(
                 )
             }
             composable(AppDestination.Subjects.route) {
-                PlaceholderScreen("Materias", "Solo muestra las materias vinculadas al código de clase del estudiante.")
+                StudentResourcesScreen()
             }
             composable(AppDestination.Calendar.route) {
                 PlaceholderScreen("Calendario", "Reúne actividades y eventos publicados por los docentes de las clases vinculadas.")
