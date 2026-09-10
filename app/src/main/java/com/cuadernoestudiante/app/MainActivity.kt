@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cuadernoestudiante.app.data.demo.DemoStudentRepository
+import com.cuadernoestudiante.app.ui.theme.AgendaThemeStyle
+import com.cuadernoestudiante.app.ui.theme.NotebookBackground
 import com.cuadernoestudiante.app.ui.theme.StudentTheme
 
 class MainActivity : ComponentActivity() {
@@ -16,8 +18,12 @@ class MainActivity : ComponentActivity() {
             val studentViewModel: StudentViewModel = viewModel(
                 factory = StudentViewModel.Factory(repository)
             )
-            StudentTheme {
-                StudentApp(viewModel = studentViewModel)
+            val familyTheme = AgendaThemeStyle.MINT_LAVENDER
+
+            StudentTheme(style = familyTheme) {
+                NotebookBackground(style = familyTheme) {
+                    StudentApp(viewModel = studentViewModel)
+                }
             }
         }
     }
