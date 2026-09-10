@@ -1,5 +1,6 @@
 package com.cuadernoestudiante.app
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,6 +17,7 @@ import com.cuadernoestudiante.app.ui.navigation.AppDestination
 import com.cuadernoestudiante.app.ui.navigation.ExtraRoute
 import com.cuadernoestudiante.app.ui.screens.common.PlaceholderScreen
 import com.cuadernoestudiante.app.ui.screens.home.HomeScreen
+import com.cuadernoestudiante.app.ui.screens.notes.StudentNotesScreen
 import com.cuadernoestudiante.app.ui.screens.profile.StudentSettingsScreen
 import com.cuadernoestudiante.app.ui.screens.subjects.StudentResourcesScreen
 import com.cuadernoestudiante.app.ui.theme.AgendaThemeStyle
@@ -33,6 +35,12 @@ fun StudentApp(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val showNavigation = AppDestination.bottomItems.any { it.route == currentRoute }
+
+    BackHandler(enabled = currentRoute != null && currentRoute != AppDestination.Home.route) {
+        if (!navController.popBackStack()) {
+            navController.navigate(AppDestination.Home.route) { launchSingleTop = true }
+        }
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val expandedNavigation = maxWidth >= 700.dp
@@ -81,15 +89,8 @@ fun StudentApp(
                     }
                 }
             ) { padding ->
-                Box(
-                    modifier = Modifier.padding(padding).fillMaxSize(),
-                    contentAlignment = Alignment.TopCenter,
-                ) {
-                    NavHost(
-                        navController = navController,
-                        startDestination = AppDestination.Home.route,
-                        modifier = Modifier.fillMaxSize().widthIn(max = 1100.dp),
-                    ) {
+                Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                    NavHost(navController = navController, startDestination = AppDestination.Home.route, modifier = Modifier.fillMaxSize().widthIn(max = 1100.dp)) {
                         composable(AppDestination.Home.route) {
                             HomeScreen(
                                 snapshot = snapshot,
@@ -101,35 +102,17 @@ fun StudentApp(
                                 onToggleTask = viewModel::markAssessmentCompleted,
                             )
                         }
-                        composable(AppDestination.Subjects.route) {
-                            StudentResourcesScreen()
-                        }
-                        composable(AppDestination.Calendar.route) {
-                            PlaceholderScreen("Calendario", "Reúne actividades y eventos publicados por los docentes de las clases vinculadas.")
-                        }
-                        composable(AppDestination.Progress.route) {
-                            PlaceholderScreen("Mi progreso", "La lógica distingue Sin evaluar de una calificación real de cero.")
-                        }
+                        composable(AppDestination.Subjects.route) { StudentResourcesScreen(onNotes = { navController.navigate(ExtraRoute.Notes) }) }
+                        composable(AppDestination.Calendar.route) { PlaceholderScreen("Calendario", "Reúne actividades y eventos publicados por los docentes de las clases vinculadas.") }
+                        composable(AppDestination.Progress.route) { PlaceholderScreen("Mi progreso", "La lógica distingue Sin evaluar de una calificación real de cero.") }
                         composable(AppDestination.Profile.route) {
-                            StudentSettingsScreen(
-                                currentTheme = currentTheme,
-                                classCode = classCode,
-                                onThemeChange = onThemeChange,
-                                onClassCodeChange = onClassCodeChange,
-                            )
+                            StudentSettingsScreen(currentTheme = currentTheme, classCode = classCode, onThemeChange = onThemeChange, onClassCodeChange = onClassCodeChange)
                         }
-                        composable(ExtraRoute.Notices) {
-                            PlaceholderScreen("Avisos", "Aquí aparecerán avisos de tus docentes. Los avisos internos de Dirección dirigidos solo a docentes no son visibles para alumnos.")
-                        }
-                        composable(ExtraRoute.Pending) {
-                            PlaceholderScreen("Pendientes", "Lista de entregas, exámenes y proyectos próximos de tus clases vinculadas.")
-                        }
-                        composable(ExtraRoute.Attendance) {
-                            PlaceholderScreen("Asistencia", "Consulta de asistencia; el estudiante no puede modificar registros.")
-                        }
-                        composable(ExtraRoute.Schedule) {
-                            PlaceholderScreen("Horario", "Horario de solo lectura de las clases vinculadas por código.")
-                        }
+                        composable(ExtraRoute.Notices) { PlaceholderScreen("Avisos", "Aquí aparecerán avisos de tus docentes. Los avisos internos de Dirección dirigidos solo a docentes no son visibles para alumnos.") }
+                        composable(ExtraRoute.Pending) { PlaceholderScreen("Pendientes", "Lista de entregas, exámenes y proyectos próximos de tus clases vinculadas.") }
+                        composable(ExtraRoute.Attendance) { PlaceholderScreen("Asistencia", "Consulta de asistencia; el estudiante no puede modificar registros.") }
+                        composable(ExtraRoute.Schedule) { PlaceholderScreen("Horario", "Horario de solo lectura de las clases vinculadas por código.") }
+                        composable(ExtraRoute.Notes) { StudentNotesScreen() }
                     }
                 }
             }
