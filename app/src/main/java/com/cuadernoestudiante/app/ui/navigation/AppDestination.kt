@@ -19,9 +19,7 @@ sealed class AppDestination(
     data object Progress : AppDestination("progress", "Progreso", Icons.Rounded.TrendingUp)
     data object Profile : AppDestination("profile", "Perfil", Icons.Rounded.Person)
 
-    companion object {
-        val bottomItems = listOf(Home, Subjects, Calendar, Progress, Profile)
-    }
+    companion object { val bottomItems = listOf(Home, Subjects, Calendar, Progress, Profile) }
 }
 
 object ExtraRoute {
@@ -29,4 +27,5 @@ object ExtraRoute {
     const val Pending = "pending"
     const val Attendance = "attendance"
     const val Schedule = "schedule"
+    const val Notes = "notes"
 }
