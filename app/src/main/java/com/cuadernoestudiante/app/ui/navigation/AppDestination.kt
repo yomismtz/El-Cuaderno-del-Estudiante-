@@ -28,4 +28,5 @@ object ExtraRoute {
     const val Attendance = "attendance"
     const val Schedule = "schedule"
     const val Notes = "notes"
+    const val TeamReport = "team_report"
 }
