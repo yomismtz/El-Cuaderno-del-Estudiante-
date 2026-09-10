@@ -1,20 +1,20 @@
 package com.cuadernoestudiante.app.core.model
 
 /**
- * Contrato local v1 del ecosistema El Cuaderno.
+ * Contrato local v2 del ecosistema El Cuaderno.
  * La autorización real deberá ser validada por el backend.
  */
 object EcosystemContract {
-    const val PROTOCOL_VERSION = 1
+    const val PROTOCOL_VERSION = 2
 
     const val TEACHER_APP_ID = "com.profecuaderno.app"
     const val STUDENT_APP_ID = "com.profecuaderno.student"
-    const val DIRECTION_APP_ID = "com.profecuaderno.direction"
+    const val DIRECTOR_APP_ID = "com.profecuaderno.director"
 
     enum class Role {
         TEACHER,
         STUDENT,
-        DIRECTION,
+        DIRECTOR,
     }
 
     enum class SharedEntityType {
@@ -30,7 +30,13 @@ object EcosystemContract {
         EVENT,
         NOTICE,
         SCHEDULE,
+        TASK_COMPLETION,
         JUSTIFICATION_REQUEST,
+    }
+
+    enum class NoticeSource {
+        TEACHER,
+        DIRECTOR,
     }
 
     object StudentCapabilities {
@@ -39,9 +45,13 @@ object EcosystemContract {
         const val READ_OWN_ATTENDANCE = true
         const val READ_OWN_SCHEDULE = true
         const val READ_OWN_NOTICES = true
+        const val READ_OWN_CALENDAR = true
+        const val MARK_OWN_TASK_COMPLETED = true
 
         const val EDIT_GRADES = false
         const val EDIT_ATTENDANCE = false
+        const val EDIT_SCHEDULE = false
+        const val PUBLISH_NOTICES = false
         const val READ_OTHER_STUDENTS = false
     }
 }
