@@ -3,9 +3,8 @@ package com.cuadernoestudiante.app.core.model
 enum class SyncStatus {
     LOCAL_ONLY,
     SYNCED,
-    PENDING_UPLOAD,
-    PENDING_UPDATE,
-    PENDING_DELETE,
+    DIRTY,
+    DELETED,
     CONFLICT,
 }
 
