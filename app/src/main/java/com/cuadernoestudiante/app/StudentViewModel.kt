@@ -11,6 +11,9 @@ class StudentViewModel(
 
     fun resetDemoData() = repository.resetDemoData()
 
+    fun markAssessmentCompleted(localId: String, completed: Boolean) =
+        repository.markAssessmentCompleted(localId, completed)
+
     class Factory(
         private val repository: StudentRepository,
     ) : ViewModelProvider.Factory {
