@@ -2,8 +2,15 @@ package com.cuadernoestudiante.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val StudentPurple = Color(0xFF65558F)
-val StudentPurpleDark = Color(0xFF4F378B)
-val StudentMint = Color(0xFFCDEDE3)
-val StudentTurquoise = Color(0xFF006A6A)
-val StudentSurface = Color(0xFFFFFBFE)
+// Identidad compartida con El Cuaderno del Maestro.
+val CuadernoPurple = Color(0xFF7654A8)
+val CuadernoMint = Color(0xFF50BDB3)
+val CuadernoTurquoise = Color(0xFF319DA5)
+val CuadernoPaper = Color(0xFFFFFDF9)
+
+val LavenderCard = Color(0xFFEDE4FB)
+val MintCard = Color(0xFFDDF7F4)
+val BlushCard = Color(0xFFFCE3EE)
+val SkyCard = Color(0xFFE5F1FF)
+val CreamCard = Color(0xFFFFF4D9)
+val SoftPurpleCard = Color(0xFFD8C6F2)

@@ -1,50 +1,52 @@
-# El Cuaderno del Estudiante
+# El Cuaderno del Estudiante 📓
 
-Aplicación Android Student del ecosistema educativo formado por Maestro, Student y Dirección.
+Aplicación Android Student del ecosistema **El Cuaderno**, diseñada como compañera de **El Cuaderno del Maestro**.
+
+## Familia de apps
+
+- **El Cuaderno del Maestro** — `com.profecuaderno.app`
+- **El Cuaderno del Estudiante** — `com.profecuaderno.student`
+- **El Cuaderno de Dirección** — `com.profecuaderno.direction` (reservado)
+
+Student comparte con Maestro la misma identidad visual: fondo tipo cuaderno, tarjetas redondeadas, Material 3 y la misma familia de temas.
+
+Student sigue siendo deliberadamente más sencilla y de solo consulta para datos académicos protegidos.
 
 ## Estado actual
 
-Primera base funcional offline/demo:
-
 - Jetpack Compose + Material 3.
 - Navegación inferior: Inicio, Materias, Calendario, Progreso y Perfil.
-- Rutas secundarias preparadas: Avisos, Pendientes, Asistencia y Horario.
-- Pantalla Inicio funcional con datos demo.
-- 6 materias, actividades, exámenes, avisos, asistencia, horario y calendario ficticios.
+- Rutas secundarias: Avisos, Pendientes, Asistencia y Horario.
+- Pantalla Inicio adaptada a la familia visual de Maestro.
+- 6 materias y datos ficticios de actividades, exámenes, avisos, asistencia, horario y calendario.
 - Botón para restablecer datos demo.
-- Sin permisos de red en esta etapa.
-- Modelo preparado para sincronización futura con IDs locales y remotos separados.
+- Funcionamiento offline.
+- Sin permiso de Internet en esta etapa.
+- Modelo preparado para sincronización futura.
 
-## Invariantes de privacidad
+## Privacidad
 
 1. Student solo representa al estudiante autenticado (`accountId` + `studentId`).
-2. Calificaciones y asistencia son datos de solo lectura desde Student.
-3. No existe ninguna operación para modificar calificaciones o asistencias.
-4. Una futura solicitud de justificante será una entidad/acción separada; nunca editará directamente una falta.
-5. No hay perfiles de compañeros, red social ni acceso cruzado a otros alumnos.
+2. Calificaciones y asistencia son de solo lectura desde Student.
+3. Student no altera calificaciones ni asistencias.
+4. Una futura solicitud de justificante será una entidad separada.
+5. No hay acceso a datos de otros alumnos.
+6. La autorización definitiva se aplicará en el servidor.
 
 ## Identidad y sincronización
 
-Cada registro sincronizable incluye:
+Cada registro sincronizable incluye `localId`, `syncId`, `accountId`, `studentId`, `createdAt`, `updatedAt` y `syncStatus`.
 
-- `localId`: identificador estable creado localmente.
-- `syncId`: identificador del servidor, nullable mientras el registro sea local.
-- `accountId`.
-- `studentId`.
-- `createdAt`.
-- `updatedAt`.
-- `syncStatus`.
+El contrato común del ecosistema está documentado en `docs/ecosystem-pack.md`.
 
-La UI depende de `StudentRepository`, no de la fuente demo. Esto permite sustituir `DemoStudentRepository` por almacenamiento persistente y/o sincronización remota sin reescribir pantallas.
-
-## Regla de calificaciones
+## Regla crítica de calificaciones
 
 `Sin evaluar` nunca se representa como `0`.
 
 - `GradeValue.notEvaluated()` = todavía no existe calificación.
 - `GradeValue.graded(0.0)` = el estudiante obtuvo cero realmente.
 
-Las pruebas unitarias verifican ambos casos.
+Las pruebas unitarias cubren ambos casos.
 
 ## Roadmap inmediato
 
@@ -54,5 +56,6 @@ Las pruebas unitarias verifican ambos casos.
 4. Avisos.
 5. Calendario y Pendientes.
 6. Horario.
-7. Perfil.
-8. Persistencia local (Room) y capa de sincronización cuando exista backend.
+7. Perfil y selector de apariencia.
+8. Persistencia local.
+9. Autenticación y sincronización con Maestro/Dirección cuando exista backend.

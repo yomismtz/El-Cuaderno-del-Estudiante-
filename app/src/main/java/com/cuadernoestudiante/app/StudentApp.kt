@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -23,9 +24,12 @@ fun StudentApp(viewModel: StudentViewModel) {
     val showBottomBar = AppDestination.bottomItems.any { it.route == currentRoute }
 
     Scaffold(
+        containerColor = Color.Transparent,
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                ) {
                     AppDestination.bottomItems.forEach { destination ->
                         NavigationBarItem(
                             selected = currentRoute == destination.route,
