@@ -1,0 +1,86 @@
+name: Apply responsive student UI
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/apply-responsive-ui.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Adapt student home for small phones tablets and rotation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('app/src/main/java/com/cuadernoestudiante/app/ui/screens/home/HomeScreen.kt')
+          s = p.read_text()
+          old = re.compile(r'@Composable\nprivate fun QuickActionGrid\(actions: List<QuickAction>\) \{.*?\n\}\n\n@Composable\nprivate fun PendingRow', re.S)
+          new = '''@Composable
+private fun QuickActionGrid(actions: List<QuickAction>) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val columns = when {
+            maxWidth < 340.dp -> 1
+            maxWidth < 760.dp -> 2
+            else -> 4
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            actions.chunked(columns).forEach { rowActions ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    rowActions.forEach { action ->
+                        ElevatedCard(
+                            onClick = action.onClick,
+                            modifier = Modifier.weight(1f).heightIn(min = if (columns == 1) 104.dp else 126.dp),
+                            shape = RoundedCornerShape(24.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(action.tint)
+                                    .padding(if (columns == 1) 14.dp else 16.dp),
+                                verticalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Icon(
+                                    imageVector = action.icon,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(if (columns >= 4) 30.dp else 34.dp),
+                                )
+                                Column {
+                                    Text(action.label, fontWeight = FontWeight.Bold)
+                                    Text(action.subtitle, style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                        }
+                    }
+                    repeat(columns - rowActions.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PendingRow'''
+          s2, n = old.subn(new, s)
+          if n != 1:
+              raise SystemExit(f'QuickActionGrid replacement count: {n}')
+          p.write_text(s2)
+          PY
+      - name: Commit responsive student UI
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app/src/main/java/com/cuadernoestudiante/app/ui/screens/home/HomeScreen.kt
+          git diff --cached --quiet || git commit -m "Adapt student home for phones tablets and rotation"
+          git push
