@@ -30,10 +30,9 @@ fun StudentResourcesScreen(onNotes: () -> Unit = {}, onTeamReport: () -> Unit = 
     var uriString by remember { mutableStateOf(prefs.getString("last_resource_uri", null)) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri == null) message = "No se seleccionó ningún archivo."
         else {
-            runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
             val readable = runCatching { context.contentResolver.openInputStream(uri)?.use { it.read() } != null }.getOrDefault(false)
             if (readable) {
                 uriString = uri.toString(); prefs.edit().putString("last_resource_uri", uri.toString()).apply()
@@ -50,7 +49,7 @@ fun StudentResourcesScreen(onNotes: () -> Unit = {}, onTeamReport: () -> Unit = 
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Icon(Icons.Default.Description, null); Text("Documentos de estudio", style = MaterialTheme.typography.titleMedium) }
                 Text("Formatos admitidos: PDF, CSV, XLS, XLSX, DOC, DOCX y TXT.")
-                Button(onClick = { picker.launch(supportedDocumentTypes) }) {
+                Button(onClick = { picker.launch("*/*") }) {
                     Icon(Icons.Default.UploadFile, null); Spacer(Modifier.width(8.dp)); Text(if (uriString == null) "Importar recurso" else "Cambiar recurso")
                 }
                 if (uriString != null) {
