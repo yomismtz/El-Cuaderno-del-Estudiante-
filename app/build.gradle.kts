@@ -16,7 +16,7 @@ android {
         versionName = "0.2.0-demo"
 
         val apiBaseUrl = (project.findProperty("PROFECUADERNO_API_BASE_URL") as String?)
-            ?: "https://example.invalid/"
+            ?: "https://profecuaderno-api-production.up.railway.app/"
         buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl.trimEnd('/')}/\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
