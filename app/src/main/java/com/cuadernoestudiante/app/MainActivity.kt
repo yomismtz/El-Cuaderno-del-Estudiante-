@@ -6,8 +6,10 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cuadernoestudiante.app.data.demo.DemoStudentRepository
+import com.cuadernoestudiante.app.network.CentralBackend
 import com.cuadernoestudiante.app.ui.AppLanguagePrefs
 import com.cuadernoestudiante.app.ui.LocalAppLanguage
+import com.cuadernoestudiante.app.ui.OnlineAuthScreen
 import com.cuadernoestudiante.app.ui.theme.AgendaThemeStyle
 import com.cuadernoestudiante.app.ui.theme.AppFontStyle
 import com.cuadernoestudiante.app.ui.theme.NotebookBackground
@@ -27,17 +29,23 @@ class MainActivity : ComponentActivity() {
             val darkMode = prefs.getBoolean("ui_dark", false)
             val fontScale = prefs.getFloat("font_scale", 1f)
             val fontStyle = AppFontStyle.fromKey(prefs.getString("font_style", null))
+            val backend = remember { CentralBackend(this@MainActivity) }
+            var onlineSession by remember { mutableStateOf(!backend.tokenStore.accessToken.isNullOrBlank()) }
 
             CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
                 StudentTheme(style = familyTheme, darkMode = darkMode, fontScale = fontScale, fontStyle = fontStyle) {
                     NotebookBackground(style = familyTheme) {
-                        StudentApp(
-                            viewModel = studentViewModel,
-                            currentTheme = familyTheme,
-                            classCode = classCode,
-                            onThemeChange = { familyTheme = it; prefs.edit().putString("theme", it.key).apply() },
-                            onClassCodeChange = { classCode = it; prefs.edit().putString("class_code", it).apply() }
-                        )
+                        if (!onlineSession) {
+                            OnlineAuthScreen(backend = backend, onAuthenticated = { onlineSession = true })
+                        } else {
+                            StudentApp(
+                                viewModel = studentViewModel,
+                                currentTheme = familyTheme,
+                                classCode = classCode,
+                                onThemeChange = { familyTheme = it; prefs.edit().putString("theme", it.key).apply() },
+                                onClassCodeChange = { classCode = it; prefs.edit().putString("class_code", it).apply() }
+                            )
+                        }
                     }
                 }
             }
