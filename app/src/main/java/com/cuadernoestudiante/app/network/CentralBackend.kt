@@ -51,6 +51,8 @@ data class TokenResponse(
     val user: UserDto
 )
 
+data class InstitutionDto(val id: Int, val name: String)
+
 data class ClassDto(
     val id: Int,
     val name: String,
@@ -95,6 +97,9 @@ interface StudentCentralApi {
 
     @GET("me")
     suspend fun me(): UserDto
+
+    @GET("institution")
+    suspend fun institution(): InstitutionDto
 
     @GET("classes")
     suspend fun classes(): List<ClassDto>
