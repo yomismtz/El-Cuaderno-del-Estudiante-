@@ -1,7 +1,10 @@
 package com.cuadernoestudiante.app.data.repository
 
+import android.content.Context
 import com.cuadernoestudiante.app.core.model.*
 import com.cuadernoestudiante.app.network.AttendanceDto
+import com.cuadernoestudiante.app.network.AttendanceSessionDto
+import com.cuadernoestudiante.app.network.AttendanceSummaryDto
 import com.cuadernoestudiante.app.network.CentralBackend
 import com.cuadernoestudiante.app.network.ClassDto
 import com.cuadernoestudiante.app.network.GradeDto
@@ -19,38 +22,49 @@ import java.time.OffsetDateTime
 import kotlin.math.roundToInt
 
 class OnlineStudentRepository(
+    context: Context,
     private val backend: CentralBackend,
 ) : StudentRepository {
+    private val appContext = context.applicationContext
+    private val offline = StudentOfflineStore(appContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val _snapshot = MutableStateFlow(emptySnapshot())
+    private val _snapshot = MutableStateFlow(offline.loadSnapshot() ?: emptySnapshot())
     override val snapshot: StateFlow<StudentDataSnapshot> = _snapshot.asStateFlow()
 
     init {
+        StudentSyncScheduler.ensurePeriodic(appContext)
+        StudentSyncScheduler.enqueueNow(appContext)
         refreshFromServer()
     }
 
-    override fun resetDemoData() {
-        refreshFromServer()
-    }
+    override fun resetDemoData() = refreshFromServer()
 
     override fun markAssessmentCompleted(localId: String, completed: Boolean) {
         val current = _snapshot.value
-        _snapshot.value = current.copy(
+        val updated = current.copy(
             assessments = current.assessments.map { assessment ->
                 if (assessment.meta.localId == localId && assessment.status != AssessmentStatus.GRADED) {
                     assessment.copy(status = if (completed) AssessmentStatus.SUBMITTED else AssessmentStatus.PENDING)
-                } else {
-                    assessment
-                }
+                } else assessment
             }
         )
+        _snapshot.value = updated
+        offline.saveSnapshot(updated)
     }
+
+    suspend fun joinClassOrQueue(code: String): OfflineWriteResult =
+        offline.joinClassOrQueue(backend, code)
+
+    fun pendingSyncCount(): Int = offline.pendingCount()
 
     fun refreshFromServer() {
         if (backend.tokenStore.accessToken.isNullOrBlank()) return
         scope.launch {
-            runCatching { loadSnapshot() }
-                .onSuccess { _snapshot.value = it }
+            offline.flush(backend)
+            runCatching { loadSnapshot() }.onSuccess {
+                offline.saveSnapshot(it)
+                _snapshot.value = it
+            }
         }
     }
 
@@ -58,11 +72,8 @@ class OnlineStudentRepository(
         val me = backend.api.me()
         val classes = backend.api.classes()
         val institutionName = if (me.institutionId != null) {
-            runCatching { backend.api.institution().name }
-                .getOrElse { "Institución ${me.institutionId}" }
-        } else {
-            ""
-        }
+            runCatching { backend.api.institution().name }.getOrElse { "Institución ${me.institutionId}" }
+        } else ""
         val scheduleRows = runCatching { backend.api.schedule() }.getOrDefault(emptyList())
         val now = System.currentTimeMillis()
         val accountId = me.id.toString()
@@ -80,6 +91,8 @@ class OnlineStudentRepository(
 
         val gradesByClass = mutableMapOf<Int, List<GradeDto>>()
         val attendanceByClass = mutableMapOf<Int, List<AttendanceDto>>()
+        val attendanceSummaryByClass = mutableMapOf<Int, AttendanceSummaryDto>()
+        val sessionsByClass = mutableMapOf<Int, Map<String, AttendanceSessionDto>>()
         val notices = mutableListOf<Notice>()
 
         classes.forEach { classroom ->
@@ -87,6 +100,10 @@ class OnlineStudentRepository(
             val classAttendance = backend.api.attendance(classroom.id)
             gradesByClass[classroom.id] = classGrades
             attendanceByClass[classroom.id] = classAttendance
+            runCatching { backend.api.attendanceSummary(classroom.id) }
+                .getOrNull()?.let { attendanceSummaryByClass[classroom.id] = it }
+            val sessions = runCatching { backend.api.attendanceSessions(classroom.id) }.getOrDefault(emptyList())
+            sessionsByClass[classroom.id] = sessions.associateBy { it.date }
 
             backend.api.notices(classroom.id).forEach { notice ->
                 notices += Notice(
@@ -105,22 +122,20 @@ class OnlineStudentRepository(
         val subjects = classes.map { classroom ->
             val grades = gradesByClass[classroom.id].orEmpty()
             val attendance = attendanceByClass[classroom.id].orEmpty()
+            val serverPercent = attendanceSummaryByClass[classroom.id]?.attendancePercent?.roundToInt()?.coerceIn(0, 100)
             Subject(
                 meta = meta(subjectId(classroom), classroom.id.toString()),
                 name = classroom.subject.ifBlank { classroom.name },
                 teacherName = "Docente",
                 currentGrade = averageGrade(grades),
-                attendancePercent = attendancePercent(attendance),
+                attendancePercent = serverPercent ?: attendancePercent(attendance),
             )
         }
 
         val assessments = classes.flatMap { classroom ->
             gradesByClass[classroom.id].orEmpty().map { grade ->
                 Assessment(
-                    meta = meta(
-                        "grade-${classroom.id}-${grade.activityKey}",
-                        "${classroom.id}:${grade.activityKey}",
-                    ),
+                    meta = meta("grade-${classroom.id}-${grade.activityKey}", "${classroom.id}:${grade.activityKey}"),
                     subjectLocalId = subjectId(classroom),
                     title = grade.activityName,
                     type = AssessmentType.ACTIVITY,
@@ -132,12 +147,16 @@ class OnlineStudentRepository(
         }
 
         val attendance = classes.flatMap { classroom ->
-            attendanceByClass[classroom.id].orEmpty().mapIndexed { index, item ->
+            val sessions = sessionsByClass[classroom.id].orEmpty()
+            attendanceByClass[classroom.id].orEmpty().mapIndexedNotNull { index, item ->
+                val session = sessions[item.date]
+                if (session?.worked == false) return@mapIndexedNotNull null
                 AttendanceRecord(
                     meta = meta("attendance-${classroom.id}-${item.date}-$index"),
                     subjectLocalId = subjectId(classroom),
                     date = runCatching { LocalDate.parse(item.date) }.getOrElse { LocalDate.now() },
                     status = attendanceStatus(item.status),
+                    sessionTitle = session?.title ?: "Clase",
                 )
             }
         }
@@ -240,15 +259,7 @@ class OnlineStudentRepository(
                 syncStatus = SyncStatus.SYNCED,
             )
             return StudentDataSnapshot(
-                profile = StudentProfile(
-                    meta = meta,
-                    name = "Cargando…",
-                    enrollmentId = "",
-                    school = "",
-                    group = "",
-                    educationLevel = "",
-                    schoolYear = "",
-                ),
+                profile = StudentProfile(meta, "Cargando…", "", "", "", "", ""),
                 subjects = emptyList(),
                 assessments = emptyList(),
                 attendance = emptyList(),

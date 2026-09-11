@@ -1,14 +1,17 @@
 package com.cuadernoestudiante.app
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.cuadernoestudiante.app.data.repository.OfflineWriteResult
 import com.cuadernoestudiante.app.data.repository.OnlineStudentRepository
 import com.cuadernoestudiante.app.network.CentralBackend
-import com.cuadernoestudiante.app.network.JoinClassRequest
 import com.cuadernoestudiante.app.ui.AppLanguagePrefs
 import com.cuadernoestudiante.app.ui.LocalAppLanguage
 import com.cuadernoestudiante.app.ui.OnlineAuthScreen
@@ -20,7 +23,7 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val backend by lazy { CentralBackend(this) }
-    private val repository by lazy { OnlineStudentRepository(backend) }
+    private val repository by lazy { OnlineStudentRepository(this, backend) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,6 +38,17 @@ class MainActivity : ComponentActivity() {
             val fontStyle = AppFontStyle.fromKey(prefs.getString("font_style", null))
             val scope = rememberCoroutineScope()
             var onlineSession by remember { mutableStateOf(!backend.tokenStore.accessToken.isNullOrBlank()) }
+
+            DisposableEffect(Unit) {
+                val connectivity = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                val callback = object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) {
+                        repository.refreshFromServer()
+                    }
+                }
+                runCatching { connectivity.registerDefaultNetworkCallback(callback) }
+                onDispose { runCatching { connectivity.unregisterNetworkCallback(callback) } }
+            }
 
             CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
                 StudentTheme(style = familyTheme, darkMode = darkMode, fontScale = fontScale, fontStyle = fontStyle) {
@@ -57,12 +71,20 @@ class MainActivity : ComponentActivity() {
                                 onClassCodeChange = { requestedCode ->
                                     val normalizedCode = requestedCode.trim().uppercase()
                                     scope.launch {
-                                        runCatching { backend.api.joinClass(JoinClassRequest(normalizedCode)) }
-                                            .onSuccess {
+                                        runCatching { repository.joinClassOrQueue(normalizedCode) }
+                                            .onSuccess { result ->
                                                 classCode = normalizedCode
                                                 prefs.edit().putString("class_code", normalizedCode).apply()
-                                                repository.refreshFromServer()
-                                                Toast.makeText(this@MainActivity, "Clase vinculada correctamente", Toast.LENGTH_SHORT).show()
+                                                if (result == OfflineWriteResult.SENT) {
+                                                    repository.refreshFromServer()
+                                                    Toast.makeText(this@MainActivity, "Clase vinculada correctamente", Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    Toast.makeText(
+                                                        this@MainActivity,
+                                                        "Sin conexión: el código quedó guardado y se enviará automáticamente cuando vuelva internet.",
+                                                        Toast.LENGTH_LONG,
+                                                    ).show()
+                                                }
                                             }
                                             .onFailure { error ->
                                                 Toast.makeText(

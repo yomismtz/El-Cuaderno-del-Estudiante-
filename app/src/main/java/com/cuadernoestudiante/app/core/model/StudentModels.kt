@@ -1,5 +1,6 @@
 package com.cuadernoestudiante.app.core.model
 
+import java.io.Serializable
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -12,7 +13,7 @@ data class StudentProfile(
     val group: String,
     val educationLevel: String,
     val schoolYear: String,
-)
+) : Serializable
 
 data class Subject(
     val meta: SyncMetadata,
@@ -20,21 +21,10 @@ data class Subject(
     val teacherName: String,
     val currentGrade: GradeValue,
     val attendancePercent: Int,
-)
+) : Serializable
 
-enum class AssessmentType {
-    ACTIVITY,
-    EXAM,
-    PROJECT,
-    PRESENTATION,
-}
-
-enum class AssessmentStatus {
-    PENDING,
-    SUBMITTED,
-    GRADED,
-    OVERDUE,
-}
+enum class AssessmentType { ACTIVITY, EXAM, PROJECT, PRESENTATION }
+enum class AssessmentStatus { PENDING, SUBMITTED, GRADED, OVERDUE }
 
 data class Assessment(
     val meta: SyncMetadata,
@@ -44,26 +34,19 @@ data class Assessment(
     val dueAt: LocalDateTime,
     val status: AssessmentStatus,
     val grade: GradeValue = GradeValue.notEvaluated(),
-)
+) : Serializable
 
-enum class AttendanceStatus {
-    PRESENT,
-    ABSENT,
-    LATE,
-    EXCUSED,
-}
+enum class AttendanceStatus { PRESENT, ABSENT, LATE, EXCUSED }
 
 data class AttendanceRecord(
     val meta: SyncMetadata,
     val subjectLocalId: String? = null,
     val date: LocalDate,
     val status: AttendanceStatus,
-)
+    val sessionTitle: String? = null,
+) : Serializable
 
-enum class NoticePublisherType {
-    TEACHER,
-    DIRECTION,
-}
+enum class NoticePublisherType { TEACHER, DIRECTION }
 
 data class Notice(
     val meta: SyncMetadata,
@@ -74,15 +57,9 @@ data class Notice(
     val subjectLocalId: String? = null,
     val publishedAt: LocalDateTime,
     val isRead: Boolean = false,
-)
+) : Serializable
 
-enum class CalendarEventType {
-    TASK,
-    EXAM,
-    PROJECT,
-    SCHOOL_EVENT,
-    IMPORTANT_DATE,
-}
+enum class CalendarEventType { TASK, EXAM, PROJECT, SCHOOL_EVENT, IMPORTANT_DATE }
 
 data class CalendarEvent(
     val meta: SyncMetadata,
@@ -91,7 +68,7 @@ data class CalendarEvent(
     val startAt: LocalDateTime,
     val subjectLocalId: String? = null,
     val details: String? = null,
-)
+) : Serializable
 
 data class ScheduleEntry(
     val meta: SyncMetadata,
@@ -100,18 +77,10 @@ data class ScheduleEntry(
     val startTime: LocalTime,
     val endTime: LocalTime,
     val room: String? = null,
-)
+) : Serializable
 
-data class ProgressComponent(
-    val label: String,
-    val weightPercent: Int,
-    val value: GradeValue,
-)
-
-data class SubjectProgress(
-    val subjectLocalId: String,
-    val components: List<ProgressComponent>,
-)
+data class ProgressComponent(val label: String, val weightPercent: Int, val value: GradeValue) : Serializable
+data class SubjectProgress(val subjectLocalId: String, val components: List<ProgressComponent>) : Serializable
 
 data class StudentDataSnapshot(
     val profile: StudentProfile,
@@ -122,4 +91,4 @@ data class StudentDataSnapshot(
     val calendarEvents: List<CalendarEvent>,
     val schedule: List<ScheduleEntry>,
     val progress: List<SubjectProgress>,
-)
+) : Serializable

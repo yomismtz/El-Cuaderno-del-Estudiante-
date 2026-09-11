@@ -1,5 +1,7 @@
 package com.cuadernoestudiante.app.core.model
 
+import java.io.Serializable
+
 enum class EvaluationStatus {
     NOT_EVALUATED,
     GRADED,
@@ -8,7 +10,7 @@ enum class EvaluationStatus {
 data class GradeValue(
     val status: EvaluationStatus,
     val score: Double? = null,
-) {
+) : Serializable {
     init {
         require(status == EvaluationStatus.NOT_EVALUATED || score != null) {
             "A graded value must contain a score. Zero is a valid score."
