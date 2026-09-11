@@ -16,9 +16,14 @@ import androidx.navigation.compose.rememberNavController
 import com.cuadernoestudiante.app.network.CentralBackend
 import com.cuadernoestudiante.app.ui.navigation.AppDestination
 import com.cuadernoestudiante.app.ui.navigation.ExtraRoute
-import com.cuadernoestudiante.app.ui.screens.common.PlaceholderScreen
 import com.cuadernoestudiante.app.ui.screens.home.HomeScreen
 import com.cuadernoestudiante.app.ui.screens.notes.StudentNotesScreen
+import com.cuadernoestudiante.app.ui.screens.online.AttendanceScreen
+import com.cuadernoestudiante.app.ui.screens.online.CalendarScreen
+import com.cuadernoestudiante.app.ui.screens.online.NoticesScreen
+import com.cuadernoestudiante.app.ui.screens.online.PendingScreen
+import com.cuadernoestudiante.app.ui.screens.online.ProgressScreen
+import com.cuadernoestudiante.app.ui.screens.online.ScheduleScreen
 import com.cuadernoestudiante.app.ui.screens.profile.StudentSettingsScreen
 import com.cuadernoestudiante.app.ui.screens.subjects.StudentResourcesScreen
 import com.cuadernoestudiante.app.ui.screens.team.AnonymousTeamReportScreen
@@ -79,13 +84,13 @@ fun StudentApp(
                         composable(AppDestination.Subjects.route) {
                             StudentResourcesScreen(onNotes = { navController.navigate(ExtraRoute.Notes) }, onTeamReport = { navController.navigate(ExtraRoute.TeamReport) })
                         }
-                        composable(AppDestination.Calendar.route) { PlaceholderScreen("Calendario", "Reúne actividades y eventos publicados por los docentes de las clases vinculadas.") }
-                        composable(AppDestination.Progress.route) { PlaceholderScreen("Mi progreso", "La lógica distingue Sin evaluar de una calificación real de cero.") }
+                        composable(AppDestination.Calendar.route) { CalendarScreen(snapshot) }
+                        composable(AppDestination.Progress.route) { ProgressScreen(snapshot) }
                         composable(AppDestination.Profile.route) { StudentSettingsScreen(currentTheme = currentTheme, classCode = classCode, onThemeChange = onThemeChange, onClassCodeChange = onClassCodeChange) }
-                        composable(ExtraRoute.Notices) { PlaceholderScreen("Avisos", "Aquí aparecerán avisos de tus docentes. Los avisos internos de Dirección dirigidos solo a docentes no son visibles para alumnos.") }
-                        composable(ExtraRoute.Pending) { PlaceholderScreen("Pendientes", "Lista de entregas, exámenes y proyectos próximos de tus clases vinculadas.") }
-                        composable(ExtraRoute.Attendance) { PlaceholderScreen("Asistencia", "Consulta de asistencia; el estudiante no puede modificar registros.") }
-                        composable(ExtraRoute.Schedule) { PlaceholderScreen("Horario", "Horario de solo lectura de las clases vinculadas por código.") }
+                        composable(ExtraRoute.Notices) { NoticesScreen(snapshot) }
+                        composable(ExtraRoute.Pending) { PendingScreen(snapshot) }
+                        composable(ExtraRoute.Attendance) { AttendanceScreen(snapshot) }
+                        composable(ExtraRoute.Schedule) { ScheduleScreen(snapshot) }
                         composable(ExtraRoute.Notes) { StudentNotesScreen() }
                         composable(ExtraRoute.TeamReport) { AnonymousTeamReportScreen(backend = backend) }
                     }
