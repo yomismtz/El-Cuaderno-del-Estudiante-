@@ -5,24 +5,25 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.cuadernoestudiante.app.data.repository.CachedStudentTeamChoice
+import com.cuadernoestudiante.app.data.repository.OfflineWriteResult
+import com.cuadernoestudiante.app.data.repository.StudentOfflineStore
+import com.cuadernoestudiante.app.data.repository.StudentTeamOfflineCache
 import com.cuadernoestudiante.app.network.CentralBackend
-import com.cuadernoestudiante.app.network.ParticipationReportRequest
-import com.cuadernoestudiante.app.network.StudentTeamActivityDto
 import com.cuadernoestudiante.app.network.TeamMemberDto
 import kotlinx.coroutines.launch
 
-private data class TeamActivityChoice(
-    val className: String,
-    val activity: StudentTeamActivityDto,
-)
-
 @Composable
 fun AnonymousTeamReportScreen(backend: CentralBackend) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val offline = remember { StudentOfflineStore(context) }
+    val teamCache = remember { StudentTeamOfflineCache(context) }
     var meId by remember { mutableStateOf<Int?>(null) }
-    var choices by remember { mutableStateOf<List<TeamActivityChoice>>(emptyList()) }
+    var choices by remember { mutableStateOf(teamCache.load()) }
     var selectedActivityId by remember { mutableStateOf<Int?>(null) }
     var selectedTargetId by remember { mutableStateOf<Int?>(null) }
     var detail by remember { mutableStateOf("") }
@@ -46,31 +47,38 @@ fun AnonymousTeamReportScreen(backend: CentralBackend) {
                     classes.forEach { classroom ->
                         backend.api.teamActivities(classroom.id)
                             .filter { it.team != null }
-                            .forEach { add(TeamActivityChoice(classroom.name, it)) }
+                            .forEach { add(CachedStudentTeamChoice(classroom.name, it)) }
                     }
                 }
                 me.id to loaded
             }.onSuccess { (currentId, loaded) ->
                 meId = currentId
                 choices = loaded
+                teamCache.save(loaded)
                 if (selectedActivityId !in loaded.map { it.activity.id }) {
                     selectedActivityId = loaded.firstOrNull { !it.activity.closed }?.activity?.id
                         ?: loaded.firstOrNull()?.activity?.id
                     selectedTargetId = null
                 }
-                message = if (loaded.isEmpty()) {
-                    "No hay actividades de equipo publicadas para tus clases."
-                } else {
-                    null
-                }
+                message = if (loaded.isEmpty()) "No hay actividades de equipo publicadas para tus clases." else null
             }.onFailure {
-                message = it.message ?: "No se pudieron cargar tus actividades de equipo."
+                if (choices.isNotEmpty()) {
+                    message = "Sin conexión: estás viendo la última información guardada en este dispositivo."
+                } else {
+                    message = it.message ?: "No se pudieron cargar tus actividades de equipo."
+                }
             }
             loading = false
         }
     }
 
-    LaunchedEffect(Unit) { refresh() }
+    LaunchedEffect(Unit) {
+        if (choices.isNotEmpty()) {
+            selectedActivityId = choices.firstOrNull { !it.activity.closed }?.activity?.id
+                ?: choices.firstOrNull()?.activity?.id
+        }
+        refresh()
+    }
     LaunchedEffect(selectedActivityId, meId) {
         if (selectedTargetId !in teammates.map(TeamMemberDto::id)) selectedTargetId = null
     }
@@ -95,15 +103,9 @@ fun AnonymousTeamReportScreen(backend: CentralBackend) {
                             enabled = choices.isNotEmpty() && !loading,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text(
-                                selectedChoice?.let { "${it.className} · ${it.activity.name}" }
-                                    ?: "Selecciona una actividad"
-                            )
+                            Text(selectedChoice?.let { "${it.className} · ${it.activity.name}" } ?: "Selecciona una actividad")
                         }
-                        DropdownMenu(
-                            expanded = activityMenu,
-                            onDismissRequest = { activityMenu = false },
-                        ) {
+                        DropdownMenu(expanded = activityMenu, onDismissRequest = { activityMenu = false }) {
                             choices.forEach { choice ->
                                 DropdownMenuItem(
                                     text = {
@@ -139,10 +141,7 @@ fun AnonymousTeamReportScreen(backend: CentralBackend) {
                         ) {
                             Text(selectedTeammate?.fullName ?: "Selecciona un compañero")
                         }
-                        DropdownMenu(
-                            expanded = teammateMenu,
-                            onDismissRequest = { teammateMenu = false },
-                        ) {
+                        DropdownMenu(expanded = teammateMenu, onDismissRequest = { teammateMenu = false }) {
                             teammates.forEach { teammate ->
                                 DropdownMenuItem(
                                     text = { Text(teammate.fullName.ifBlank { "Compañero ${teammate.id}" }) },
@@ -161,16 +160,8 @@ fun AnonymousTeamReportScreen(backend: CentralBackend) {
 
                     Text("Participación observada", fontWeight = FontWeight.Bold)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        FilterChip(
-                            selected = severity == "did_not_work",
-                            onClick = { severity = "did_not_work" },
-                            label = { Text("No trabajó") },
-                        )
-                        FilterChip(
-                            selected = severity == "partial",
-                            onClick = { severity = "partial" },
-                            label = { Text("Participación parcial") },
-                        )
+                        FilterChip(selected = severity == "did_not_work", onClick = { severity = "did_not_work" }, label = { Text("No trabajó") })
+                        FilterChip(selected = severity == "partial", onClick = { severity = "partial" }, label = { Text("Participación parcial") })
                     }
 
                     OutlinedTextField(
@@ -189,20 +180,23 @@ fun AnonymousTeamReportScreen(backend: CentralBackend) {
                             scope.launch {
                                 loading = true
                                 runCatching {
-                                    backend.api.reportParticipation(
-                                        activityId,
-                                        ParticipationReportRequest(
-                                            targetStudentId = targetId,
-                                            severity = severity,
-                                            comment = detail.trim(),
-                                        ),
+                                    offline.reportParticipationOrQueue(
+                                        backend = backend,
+                                        activityId = activityId,
+                                        targetStudentId = targetId,
+                                        severity = severity,
+                                        comment = detail.trim(),
                                     )
-                                }.onSuccess {
+                                }.onSuccess { result ->
                                     detail = ""
                                     selectedTargetId = null
-                                    message = "Reporte enviado de forma anónima al docente para revisión."
+                                    message = if (result == OfflineWriteResult.SENT) {
+                                        "Reporte enviado de forma anónima al docente para revisión."
+                                    } else {
+                                        "Sin conexión: el reporte quedó guardado y se enviará automáticamente cuando vuelva internet."
+                                    }
                                 }.onFailure {
-                                    message = it.message ?: "No se pudo enviar el reporte."
+                                    message = it.message ?: "No se pudo guardar el reporte."
                                 }
                                 loading = false
                             }
