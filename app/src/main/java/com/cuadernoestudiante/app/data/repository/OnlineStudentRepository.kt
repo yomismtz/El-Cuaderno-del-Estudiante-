@@ -1,5 +1,6 @@
 package com.cuadernoestudiante.app.data.repository
 
+import android.content.Context
 import com.cuadernoestudiante.app.core.model.*
 import com.cuadernoestudiante.app.network.AttendanceDto
 import com.cuadernoestudiante.app.network.AttendanceSessionDto
@@ -21,31 +22,49 @@ import java.time.OffsetDateTime
 import kotlin.math.roundToInt
 
 class OnlineStudentRepository(
+    context: Context,
     private val backend: CentralBackend,
 ) : StudentRepository {
+    private val appContext = context.applicationContext
+    private val offline = StudentOfflineStore(appContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val _snapshot = MutableStateFlow(emptySnapshot())
+    private val _snapshot = MutableStateFlow(offline.loadSnapshot() ?: emptySnapshot())
     override val snapshot: StateFlow<StudentDataSnapshot> = _snapshot.asStateFlow()
 
-    init { refreshFromServer() }
+    init {
+        StudentSyncScheduler.ensurePeriodic(appContext)
+        StudentSyncScheduler.enqueueNow(appContext)
+        refreshFromServer()
+    }
 
-    override fun resetDemoData() { refreshFromServer() }
+    override fun resetDemoData() = refreshFromServer()
 
     override fun markAssessmentCompleted(localId: String, completed: Boolean) {
         val current = _snapshot.value
-        _snapshot.value = current.copy(
+        val updated = current.copy(
             assessments = current.assessments.map { assessment ->
                 if (assessment.meta.localId == localId && assessment.status != AssessmentStatus.GRADED) {
                     assessment.copy(status = if (completed) AssessmentStatus.SUBMITTED else AssessmentStatus.PENDING)
                 } else assessment
             }
         )
+        _snapshot.value = updated
+        offline.saveSnapshot(updated)
     }
+
+    suspend fun joinClassOrQueue(code: String): OfflineWriteResult =
+        offline.joinClassOrQueue(backend, code)
+
+    fun pendingSyncCount(): Int = offline.pendingCount()
 
     fun refreshFromServer() {
         if (backend.tokenStore.accessToken.isNullOrBlank()) return
         scope.launch {
-            runCatching { loadSnapshot() }.onSuccess { _snapshot.value = it }
+            offline.flush(backend)
+            runCatching { loadSnapshot() }.onSuccess {
+                offline.saveSnapshot(it)
+                _snapshot.value = it
+            }
         }
     }
 
