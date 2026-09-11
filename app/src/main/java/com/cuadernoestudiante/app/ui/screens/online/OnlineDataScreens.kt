@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,10 +27,7 @@ private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
 @Composable
 private fun ScreenList(title: String, subtitle: String, empty: String, count: Int, content: @Composable () -> Unit) {
-    LazyColumn(
-        contentPadding = PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
+    LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -42,9 +38,7 @@ private fun ScreenList(title: String, subtitle: String, empty: String, count: In
 
 @Composable
 private fun InfoCard(text: String) {
-    Card(Modifier.fillMaxWidth()) {
-        Text(text, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium)
-    }
+    Card(Modifier.fillMaxWidth()) { Text(text, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium) }
 }
 
 @Composable
@@ -83,18 +77,10 @@ private fun assessmentStatusText(status: AssessmentStatus): String = when (statu
 
 @Composable
 fun NoticesScreen(snapshot: StudentDataSnapshot) {
-    ScreenList(
-        title = "Avisos",
-        subtitle = "Comunicados publicados para tus clases. Los mensajes internos de Dirección a docentes no se muestran aquí.",
-        empty = "No hay avisos publicados.",
-        count = snapshot.notices.size,
-    ) {
+    ScreenList("Avisos", "Comunicados publicados para tus clases. Los mensajes internos de Dirección a docentes no se muestran aquí.", "No hay avisos publicados.", snapshot.notices.size) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             snapshot.notices.sortedByDescending { it.publishedAt }.forEach { notice ->
-                DataCard(
-                    notice.title,
-                    listOf(snapshot.subjectName(notice.subjectLocalId), notice.body, "${notice.publisherName} · ${notice.publishedAt.format(dateTimeFormatter)}"),
-                )
+                DataCard(notice.title, listOf(snapshot.subjectName(notice.subjectLocalId), notice.body, "${notice.publisherName} · ${notice.publishedAt.format(dateTimeFormatter)}"))
             }
         }
     }
@@ -115,10 +101,18 @@ fun PendingScreen(snapshot: StudentDataSnapshot) {
 @Composable
 fun AttendanceScreen(snapshot: StudentDataSnapshot) {
     val rows = snapshot.attendance.sortedByDescending { it.date }
-    ScreenList("Asistencia", "Consulta de solo lectura de tus registros de asistencia.", "Todavía no hay registros de asistencia.", rows.size) {
+    ScreenList(
+        "Asistencia",
+        "Consulta de solo lectura. El porcentaje respeta las reglas de retardos y justificantes configuradas por tu docente.",
+        "Todavía no hay registros de asistencia.",
+        rows.size
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             rows.forEach { item ->
-                DataCard(snapshot.subjectName(item.subjectLocalId), listOf(item.date.format(dateFormatter), attendanceText(item.status)))
+                DataCard(
+                    snapshot.subjectName(item.subjectLocalId),
+                    listOf(item.date.format(dateFormatter), item.sessionTitle.orEmpty(), attendanceText(item.status))
+                )
             }
         }
     }
