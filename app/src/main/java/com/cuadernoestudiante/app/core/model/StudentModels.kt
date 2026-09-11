@@ -22,19 +22,8 @@ data class Subject(
     val attendancePercent: Int,
 )
 
-enum class AssessmentType {
-    ACTIVITY,
-    EXAM,
-    PROJECT,
-    PRESENTATION,
-}
-
-enum class AssessmentStatus {
-    PENDING,
-    SUBMITTED,
-    GRADED,
-    OVERDUE,
-}
+enum class AssessmentType { ACTIVITY, EXAM, PROJECT, PRESENTATION }
+enum class AssessmentStatus { PENDING, SUBMITTED, GRADED, OVERDUE }
 
 data class Assessment(
     val meta: SyncMetadata,
@@ -46,24 +35,17 @@ data class Assessment(
     val grade: GradeValue = GradeValue.notEvaluated(),
 )
 
-enum class AttendanceStatus {
-    PRESENT,
-    ABSENT,
-    LATE,
-    EXCUSED,
-}
+enum class AttendanceStatus { PRESENT, ABSENT, LATE, EXCUSED }
 
 data class AttendanceRecord(
     val meta: SyncMetadata,
     val subjectLocalId: String? = null,
     val date: LocalDate,
     val status: AttendanceStatus,
+    val sessionTitle: String? = null,
 )
 
-enum class NoticePublisherType {
-    TEACHER,
-    DIRECTION,
-}
+enum class NoticePublisherType { TEACHER, DIRECTION }
 
 data class Notice(
     val meta: SyncMetadata,
@@ -76,13 +58,7 @@ data class Notice(
     val isRead: Boolean = false,
 )
 
-enum class CalendarEventType {
-    TASK,
-    EXAM,
-    PROJECT,
-    SCHOOL_EVENT,
-    IMPORTANT_DATE,
-}
+enum class CalendarEventType { TASK, EXAM, PROJECT, SCHOOL_EVENT, IMPORTANT_DATE }
 
 data class CalendarEvent(
     val meta: SyncMetadata,
@@ -102,16 +78,8 @@ data class ScheduleEntry(
     val room: String? = null,
 )
 
-data class ProgressComponent(
-    val label: String,
-    val weightPercent: Int,
-    val value: GradeValue,
-)
-
-data class SubjectProgress(
-    val subjectLocalId: String,
-    val components: List<ProgressComponent>,
-)
+data class ProgressComponent(val label: String, val weightPercent: Int, val value: GradeValue)
+data class SubjectProgress(val subjectLocalId: String, val components: List<ProgressComponent>)
 
 data class StudentDataSnapshot(
     val profile: StudentProfile,
