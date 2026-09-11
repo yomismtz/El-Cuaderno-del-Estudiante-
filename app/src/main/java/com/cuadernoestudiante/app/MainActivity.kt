@@ -50,6 +50,7 @@ class MainActivity : ComponentActivity() {
                         } else {
                             StudentApp(
                                 viewModel = studentViewModel,
+                                backend = backend,
                                 currentTheme = familyTheme,
                                 classCode = classCode,
                                 onThemeChange = { familyTheme = it; prefs.edit().putString("theme", it.key).apply() },
