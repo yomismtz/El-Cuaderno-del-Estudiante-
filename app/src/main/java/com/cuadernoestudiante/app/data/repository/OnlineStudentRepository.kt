@@ -33,8 +33,6 @@ class OnlineStudentRepository(
     }
 
     override fun markAssessmentCompleted(localId: String, completed: Boolean) {
-        // Server-published grades and attendance are read-only for students.
-        // Local completion remains available for future task endpoints without altering grades.
         val current = _snapshot.value
         _snapshot.value = current.copy(
             assessments = current.assessments.map { assessment ->
@@ -184,7 +182,7 @@ class OnlineStudentRepository(
         if (items.isEmpty()) return 0
         val attended = items.count { item ->
             when (item.status.trim().lowercase()) {
-                "present", "presente", "late", "retardo", "excused", "justificada", "justificado" -> true
+                "present", "presente", "late", "retardo", "justified", "excused", "justificada", "justificado" -> true
                 else -> false
             }
         }
@@ -194,7 +192,7 @@ class OnlineStudentRepository(
     private fun attendanceStatus(value: String): AttendanceStatus = when (value.trim().lowercase()) {
         "absent", "ausente", "falta" -> AttendanceStatus.ABSENT
         "late", "retardo", "tarde" -> AttendanceStatus.LATE
-        "excused", "justificada", "justificado" -> AttendanceStatus.EXCUSED
+        "justified", "excused", "justificada", "justificado" -> AttendanceStatus.EXCUSED
         else -> AttendanceStatus.PRESENT
     }
 
