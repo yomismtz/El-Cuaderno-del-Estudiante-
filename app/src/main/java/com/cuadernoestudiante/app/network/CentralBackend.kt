@@ -85,6 +85,16 @@ data class GradeDto(
     val source: String
 )
 
+data class ScheduleDto(
+    val id: Int,
+    @SerializedName("teacher_id") val teacherId: Int,
+    @SerializedName("class_id") val classId: Int?,
+    val weekday: Int,
+    @SerializedName("start_time") val startTime: String,
+    @SerializedName("end_time") val endTime: String,
+    val room: String,
+)
+
 interface StudentCentralApi {
     @GET("health")
     suspend fun health(): Map<String, String>
@@ -115,6 +125,9 @@ interface StudentCentralApi {
 
     @GET("classes/{classId}/grades/me")
     suspend fun grades(@Path("classId") classId: Int): List<GradeDto>
+
+    @GET("schedule")
+    suspend fun schedule(): List<ScheduleDto>
 }
 
 class CentralBackend(context: Context) {
