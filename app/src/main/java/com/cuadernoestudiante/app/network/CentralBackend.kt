@@ -95,6 +95,33 @@ data class ScheduleDto(
     val room: String,
 )
 
+data class StudentTeamDto(
+    val name: String,
+    @SerializedName("student_ids") val studentIds: List<Int>,
+)
+
+data class TeamMemberDto(
+    val id: Int,
+    @SerializedName("full_name") val fullName: String,
+)
+
+data class StudentTeamActivityDto(
+    val id: Int,
+    val name: String,
+    @SerializedName("activity_type") val activityType: String,
+    val category: String,
+    @SerializedName("activity_key") val activityKey: String,
+    val closed: Boolean,
+    val team: StudentTeamDto?,
+    @SerializedName("team_members") val teamMembers: List<TeamMemberDto> = emptyList(),
+)
+
+data class ParticipationReportRequest(
+    @SerializedName("target_student_id") val targetStudentId: Int,
+    val severity: String,
+    val comment: String = "",
+)
+
 interface StudentCentralApi {
     @GET("health")
     suspend fun health(): Map<String, String>
@@ -128,6 +155,15 @@ interface StudentCentralApi {
 
     @GET("schedule")
     suspend fun schedule(): List<ScheduleDto>
+
+    @GET("classes/{classId}/team-activities")
+    suspend fun teamActivities(@Path("classId") classId: Int): List<StudentTeamActivityDto>
+
+    @POST("team-activities/{activityId}/participation-reports")
+    suspend fun reportParticipation(
+        @Path("activityId") activityId: Int,
+        @Body request: ParticipationReportRequest,
+    ): Map<String, String>
 }
 
 class CentralBackend(context: Context) {
