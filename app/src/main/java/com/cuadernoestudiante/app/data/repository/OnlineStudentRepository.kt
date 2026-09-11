@@ -2,6 +2,7 @@ package com.cuadernoestudiante.app.data.repository
 
 import com.cuadernoestudiante.app.core.model.*
 import com.cuadernoestudiante.app.network.AttendanceDto
+import com.cuadernoestudiante.app.network.AttendanceSessionDto
 import com.cuadernoestudiante.app.network.AttendanceSummaryDto
 import com.cuadernoestudiante.app.network.CentralBackend
 import com.cuadernoestudiante.app.network.ClassDto
@@ -72,7 +73,7 @@ class OnlineStudentRepository(
         val gradesByClass = mutableMapOf<Int, List<GradeDto>>()
         val attendanceByClass = mutableMapOf<Int, List<AttendanceDto>>()
         val attendanceSummaryByClass = mutableMapOf<Int, AttendanceSummaryDto>()
-        val sessionTitlesByClass = mutableMapOf<Int, Map<String, String>>()
+        val sessionsByClass = mutableMapOf<Int, Map<String, AttendanceSessionDto>>()
         val notices = mutableListOf<Notice>()
 
         classes.forEach { classroom ->
@@ -83,7 +84,7 @@ class OnlineStudentRepository(
             runCatching { backend.api.attendanceSummary(classroom.id) }
                 .getOrNull()?.let { attendanceSummaryByClass[classroom.id] = it }
             val sessions = runCatching { backend.api.attendanceSessions(classroom.id) }.getOrDefault(emptyList())
-            sessionTitlesByClass[classroom.id] = sessions.associate { it.date to it.title }
+            sessionsByClass[classroom.id] = sessions.associateBy { it.date }
 
             backend.api.notices(classroom.id).forEach { notice ->
                 notices += Notice(
@@ -127,14 +128,16 @@ class OnlineStudentRepository(
         }
 
         val attendance = classes.flatMap { classroom ->
-            val titles = sessionTitlesByClass[classroom.id].orEmpty()
-            attendanceByClass[classroom.id].orEmpty().mapIndexed { index, item ->
+            val sessions = sessionsByClass[classroom.id].orEmpty()
+            attendanceByClass[classroom.id].orEmpty().mapIndexedNotNull { index, item ->
+                val session = sessions[item.date]
+                if (session?.worked == false) return@mapIndexedNotNull null
                 AttendanceRecord(
                     meta = meta("attendance-${classroom.id}-${item.date}-$index"),
                     subjectLocalId = subjectId(classroom),
                     date = runCatching { LocalDate.parse(item.date) }.getOrElse { LocalDate.now() },
                     status = attendanceStatus(item.status),
-                    sessionTitle = titles[item.date] ?: "Clase",
+                    sessionTitle = session?.title ?: "Clase",
                 )
             }
         }
