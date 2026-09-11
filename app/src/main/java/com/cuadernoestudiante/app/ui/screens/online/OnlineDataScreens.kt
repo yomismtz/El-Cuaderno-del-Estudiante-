@@ -146,15 +146,28 @@ fun CalendarScreen(snapshot: StudentDataSnapshot) {
 
 @Composable
 fun ProgressScreen(snapshot: StudentDataSnapshot) {
-    ScreenList("Mi progreso", "Las calificaciones no evaluadas se mantienen separadas de una calificación real de cero.", "Todavía no hay componentes de progreso.", snapshot.progress.size) {
+    ScreenList(
+        "Mi progreso",
+        "La calificación actual usa los mismos porcentajes del esquema del docente. Los rubros sin evaluar no cuentan como cero: permanecen como pendientes hasta recibir una calificación.",
+        "Todavía no hay componentes de progreso.",
+        snapshot.progress.size
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             snapshot.progress.forEach { progress ->
+                val subject = snapshot.subjects.firstOrNull { it.meta.localId == progress.subjectLocalId }
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(snapshot.subjectName(progress.subjectLocalId), fontWeight = FontWeight.SemiBold)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Calificación actual", fontWeight = FontWeight.Medium)
+                            Text(subject?.currentGrade?.let(::gradeText) ?: "Sin evaluar", fontWeight = FontWeight.Bold)
+                        }
                         progress.components.forEach { component ->
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("${component.label} (${component.weightPercent}%)", modifier = Modifier.weight(1f))
+                                val label = if (component.weightPercent > 0) {
+                                    "${component.label} (${component.weightPercent}%)"
+                                } else component.label
+                                Text(label, modifier = Modifier.weight(1f))
                                 Text(gradeText(component.value), fontWeight = FontWeight.Medium)
                             }
                         }
