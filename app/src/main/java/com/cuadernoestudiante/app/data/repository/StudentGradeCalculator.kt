@@ -13,7 +13,7 @@ internal object StudentGradeCalculator {
         else score.coerceIn(0.0, 100.0)
 
     fun calculatedCurrentGrade(grades: List<GradeDto>, plan: EvaluationPlanDto?): GradeValue {
-        if (plan != null && plan.categories.isNotEmpty()) {
+        if (plan?.finalized == true && plan.categories.isNotEmpty()) {
             val byKey = grades.associateBy { it.activityKey }
             var weightedPoints = 0.0
             var evaluatedWeight = 0.0
