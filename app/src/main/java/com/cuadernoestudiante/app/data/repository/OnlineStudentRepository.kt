@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.OffsetDateTime
 import kotlin.math.roundToInt
 
@@ -62,6 +63,7 @@ class OnlineStudentRepository(
         } else {
             ""
         }
+        val scheduleRows = runCatching { backend.api.schedule() }.getOrDefault(emptyList())
         val now = System.currentTimeMillis()
         val accountId = me.id.toString()
         val studentId = me.id.toString()
@@ -154,6 +156,22 @@ class OnlineStudentRepository(
             )
         }
 
+        val classIds = classes.associateBy { it.id }
+        val schedule = scheduleRows.mapNotNull { row ->
+            val classId = row.classId ?: return@mapNotNull null
+            val classroom = classIds[classId] ?: return@mapNotNull null
+            val start = runCatching { LocalTime.parse(row.startTime) }.getOrNull() ?: return@mapNotNull null
+            val end = runCatching { LocalTime.parse(row.endTime) }.getOrNull() ?: return@mapNotNull null
+            ScheduleEntry(
+                meta = meta("schedule-${row.id}", row.id.toString()),
+                subjectLocalId = subjectId(classroom),
+                dayOfWeek = row.weekday,
+                startTime = start,
+                endTime = end,
+                room = row.room.ifBlank { null },
+            )
+        }
+
         return StudentDataSnapshot(
             profile = StudentProfile(
                 meta = meta("profile-${me.id}", me.id.toString()),
@@ -169,7 +187,7 @@ class OnlineStudentRepository(
             attendance = attendance,
             notices = notices.sortedByDescending { it.publishedAt },
             calendarEvents = emptyList(),
-            schedule = emptyList(),
+            schedule = schedule,
             progress = progress,
         )
     }
