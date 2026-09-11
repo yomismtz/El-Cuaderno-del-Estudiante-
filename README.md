@@ -1,61 +1,42 @@
 # El Cuaderno del Estudiante 📓
 
-Aplicación Android Student del ecosistema **El Cuaderno**, diseñada como compañera de **El Cuaderno del Maestro**.
-
-## Familia de apps
-
-- **El Cuaderno del Maestro** — `com.profecuaderno.app`
-- **El Cuaderno del Estudiante** — `com.profecuaderno.student`
-- **El Cuaderno de Dirección** — `com.profecuaderno.direction` (reservado)
-
-Student comparte con Maestro la misma identidad visual: fondo tipo cuaderno, tarjetas redondeadas, Material 3 y la misma familia de temas.
-
-Student sigue siendo deliberadamente más sencilla y de solo consulta para datos académicos protegidos.
+Aplicación Android para estudiantes del ecosistema online formado por **ProfeCuaderno**, **El Cuaderno del Estudiante** y **El Escritorio del Director**.
 
 ## Estado actual
 
-- Jetpack Compose + Material 3.
-- Navegación inferior: Inicio, Materias, Calendario, Progreso y Perfil.
-- Rutas secundarias: Avisos, Pendientes, Asistencia y Horario.
-- Pantalla Inicio adaptada a la familia visual de Maestro.
-- 6 materias y datos ficticios de actividades, exámenes, avisos, asistencia, horario y calendario.
-- Botón para restablecer datos demo.
-- Funcionamiento offline.
-- Sin permiso de Internet en esta etapa.
-- Modelo preparado para sincronización futura.
+La app ya utiliza el backend central real. El estudiante puede:
+
+- Registrarse e iniciar sesión como estudiante.
+- Unirse a una clase mediante el código entregado por el docente.
+- Consultar su institución y sus clases vinculadas.
+- Ver avisos, pendientes, asistencia, calificaciones, horario, calendario y progreso.
+- Mantener separados los estados **Sin evaluar** y una calificación real de `0`.
+- Consultar actividades de equipo en las que participa.
+- Enviar un reporte de participación únicamente sobre integrantes de su propio equipo mientras la actividad esté abierta.
+
+Los datos académicos protegidos son de solo lectura en la app del estudiante: el alumno no modifica asistencia ni calificaciones.
+
+## Privacidad de la coevaluación
+
+El backend impide que un alumno se reporte a sí mismo o reporte a integrantes de otros equipos. El resumen que recibe el docente no expone la identidad del estudiante que realizó el reporte. El docente revisa y resuelve los reportes antes del cierre de la actividad.
+
+## Relación con las otras apps
+
+- **ProfeCuaderno** crea las clases, publica avisos y sincroniza la información académica.
+- **El Cuaderno del Estudiante** muestra al alumno exclusivamente la información que le corresponde.
+- **El Escritorio del Director** coordina la institución, docentes y horarios sin convertirse en una vista abierta del expediente académico de cada alumno.
+
+Sitio público del ecosistema: https://profecuaderno-api-production.up.railway.app/
+
+Política de privacidad conjunta: https://profecuaderno-api-production.up.railway.app/privacy
+
+## Compilación
+
+El workflow `.github/workflows/android.yml` ejecuta las pruebas y genera dos artefactos de prueba:
+
+- `app-debug.apk`
+- `app-debug.aab`
 
 ## Privacidad
 
-1. Student solo representa al estudiante autenticado (`accountId` + `studentId`).
-2. Calificaciones y asistencia son de solo lectura desde Student.
-3. Student no altera calificaciones ni asistencias.
-4. Una futura solicitud de justificante será una entidad separada.
-5. No hay acceso a datos de otros alumnos.
-6. La autorización definitiva se aplicará en el servidor.
-
-## Identidad y sincronización
-
-Cada registro sincronizable incluye `localId`, `syncId`, `accountId`, `studentId`, `createdAt`, `updatedAt` y `syncStatus`.
-
-El contrato común del ecosistema está documentado en `docs/ecosystem-pack.md`.
-
-## Regla crítica de calificaciones
-
-`Sin evaluar` nunca se representa como `0`.
-
-- `GradeValue.notEvaluated()` = todavía no existe calificación.
-- `GradeValue.graded(0.0)` = el estudiante obtuvo cero realmente.
-
-Las pruebas unitarias cubren ambos casos.
-
-## Roadmap inmediato
-
-1. Materias y detalle de materia.
-2. Mi progreso.
-3. Asistencia.
-4. Avisos.
-5. Calendario y Pendientes.
-6. Horario.
-7. Perfil y selector de apariencia.
-8. Persistencia local.
-9. Autenticación y sincronización con Maestro/Dirección cuando exista backend.
+La aplicación requiere autenticación para acceder a los datos online y el servidor aplica permisos por rol y pertenencia a clase/institución. Antes de un despliegue escolar definitivo deben documentarse el responsable legal del tratamiento, el contacto de privacidad, los plazos de conservación y el proveedor de infraestructura vigente. La política conjunta enlazada arriba describe el alcance actual del ecosistema online.
