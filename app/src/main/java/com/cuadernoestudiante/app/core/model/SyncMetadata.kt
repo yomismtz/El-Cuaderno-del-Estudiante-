@@ -1,5 +1,7 @@
 package com.cuadernoestudiante.app.core.model
 
+import java.io.Serializable
+
 enum class SyncStatus {
     LOCAL_ONLY,
     SYNCED,
@@ -16,4 +18,4 @@ data class SyncMetadata(
     val createdAt: Long,
     val updatedAt: Long,
     val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
-)
+) : Serializable
