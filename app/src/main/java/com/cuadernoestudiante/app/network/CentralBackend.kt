@@ -69,6 +69,20 @@ data class GradeDto(
     val source: String
 )
 
+data class EvaluationPlanCategoryDto(
+    @SerializedName("category_key") val categoryKey: String,
+    val name: String,
+    val weight: Double,
+    val mode: String,
+    val position: Int,
+)
+
+data class EvaluationPlanDto(
+    @SerializedName("class_id") val classId: Int,
+    val finalized: Boolean,
+    val categories: List<EvaluationPlanCategoryDto>,
+)
+
 data class ScheduleDto(val id: Int, @SerializedName("teacher_id") val teacherId: Int, @SerializedName("class_id") val classId: Int?, val weekday: Int, @SerializedName("start_time") val startTime: String, @SerializedName("end_time") val endTime: String, val room: String)
 data class StudentTeamDto(val name: String, @SerializedName("student_ids") val studentIds: List<Int>)
 data class TeamMemberDto(val id: Int, @SerializedName("full_name") val fullName: String)
@@ -100,6 +114,7 @@ interface StudentCentralApi {
     @GET("classes/{classId}/attendance-policy") suspend fun attendancePolicy(@Path("classId") classId: Int): AttendancePolicyDto
     @GET("classes/{classId}/attendance-summary/me") suspend fun attendanceSummary(@Path("classId") classId: Int): AttendanceSummaryDto
     @GET("classes/{classId}/grades/me") suspend fun grades(@Path("classId") classId: Int): List<GradeDto>
+    @GET("classes/{classId}/evaluation-plan") suspend fun evaluationPlan(@Path("classId") classId: Int): EvaluationPlanDto
     @GET("schedule") suspend fun schedule(): List<ScheduleDto>
     @GET("classes/{classId}/team-activities") suspend fun teamActivities(@Path("classId") classId: Int): List<StudentTeamActivityDto>
     @POST("team-activities/{activityId}/participation-reports") suspend fun reportParticipation(@Path("activityId") activityId: Int, @Body request: ParticipationReportRequest): Map<String, String>
