@@ -7,6 +7,7 @@ import com.cuadernoestudiante.app.network.AttendanceSessionDto
 import com.cuadernoestudiante.app.network.AttendanceSummaryDto
 import com.cuadernoestudiante.app.network.CentralBackend
 import com.cuadernoestudiante.app.network.ClassDto
+import com.cuadernoestudiante.app.network.EvaluationPlanDto
 import com.cuadernoestudiante.app.network.GradeDto
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -90,6 +91,7 @@ class OnlineStudentRepository(
         )
 
         val gradesByClass = mutableMapOf<Int, List<GradeDto>>()
+        val evaluationPlanByClass = mutableMapOf<Int, EvaluationPlanDto>()
         val attendanceByClass = mutableMapOf<Int, List<AttendanceDto>>()
         val attendanceSummaryByClass = mutableMapOf<Int, AttendanceSummaryDto>()
         val sessionsByClass = mutableMapOf<Int, Map<String, AttendanceSessionDto>>()
@@ -100,6 +102,8 @@ class OnlineStudentRepository(
             val classAttendance = backend.api.attendance(classroom.id)
             gradesByClass[classroom.id] = classGrades
             attendanceByClass[classroom.id] = classAttendance
+            runCatching { backend.api.evaluationPlan(classroom.id) }
+                .getOrNull()?.let { evaluationPlanByClass[classroom.id] = it }
             runCatching { backend.api.attendanceSummary(classroom.id) }
                 .getOrNull()?.let { attendanceSummaryByClass[classroom.id] = it }
             val sessions = runCatching { backend.api.attendanceSessions(classroom.id) }.getOrDefault(emptyList())
@@ -121,29 +125,35 @@ class OnlineStudentRepository(
 
         val subjects = classes.map { classroom ->
             val grades = gradesByClass[classroom.id].orEmpty()
+            val plan = evaluationPlanByClass[classroom.id]
             val attendance = attendanceByClass[classroom.id].orEmpty()
             val serverPercent = attendanceSummaryByClass[classroom.id]?.attendancePercent?.roundToInt()?.coerceIn(0, 100)
             Subject(
                 meta = meta(subjectId(classroom), classroom.id.toString()),
                 name = classroom.subject.ifBlank { classroom.name },
                 teacherName = "Docente",
-                currentGrade = averageGrade(grades),
+                currentGrade = calculatedCurrentGrade(grades, plan),
                 attendancePercent = serverPercent ?: attendancePercent(attendance),
             )
         }
 
+        // Las filas category-* son el resumen de cada rubro del esquema del docente,
+        // no tareas independientes. Solo otras filas (por ejemplo trabajo en equipo)
+        // aparecen como evaluaciones concretas para evitar duplicar calificaciones.
         val assessments = classes.flatMap { classroom ->
-            gradesByClass[classroom.id].orEmpty().map { grade ->
-                Assessment(
-                    meta = meta("grade-${classroom.id}-${grade.activityKey}", "${classroom.id}:${grade.activityKey}"),
-                    subjectLocalId = subjectId(classroom),
-                    title = grade.activityName,
-                    type = AssessmentType.ACTIVITY,
-                    dueAt = LocalDateTime.now(),
-                    status = AssessmentStatus.GRADED,
-                    grade = GradeValue.graded(normalizedGrade(grade)),
-                )
-            }
+            gradesByClass[classroom.id].orEmpty()
+                .filterNot { it.activityKey.startsWith("category-") }
+                .map { grade ->
+                    Assessment(
+                        meta = meta("grade-${classroom.id}-${grade.activityKey}", "${classroom.id}:${grade.activityKey}"),
+                        subjectLocalId = subjectId(classroom),
+                        title = grade.activityName,
+                        type = AssessmentType.ACTIVITY,
+                        dueAt = LocalDateTime.now(),
+                        status = AssessmentStatus.GRADED,
+                        grade = GradeValue.graded(normalizedGrade(grade)),
+                    )
+                }
         }
 
         val attendance = classes.flatMap { classroom ->
@@ -163,16 +173,29 @@ class OnlineStudentRepository(
 
         val progress = classes.mapNotNull { classroom ->
             val grades = gradesByClass[classroom.id].orEmpty()
-            if (grades.isEmpty()) null else SubjectProgress(
-                subjectLocalId = subjectId(classroom),
-                components = grades.map { grade ->
+            val plan = evaluationPlanByClass[classroom.id]
+            val byKey = grades.associateBy { it.activityKey }
+            val components = if (plan != null && plan.categories.isNotEmpty()) {
+                plan.categories.sortedBy { it.position }.map { category ->
+                    val grade = byKey[category.categoryKey]
+                    ProgressComponent(
+                        label = category.name,
+                        weightPercent = category.weight.roundToInt().coerceIn(0, 100),
+                        value = grade?.let { GradeValue.graded(normalizedGrade(it)) } ?: GradeValue.notEvaluated(),
+                    )
+                }
+            } else {
+                grades.filter { it.activityKey.startsWith("category-") }.map { grade ->
                     ProgressComponent(
                         label = grade.category.ifBlank { grade.activityName },
                         weightPercent = 0,
                         value = GradeValue.graded(normalizedGrade(grade)),
                     )
-                },
-            )
+                }
+            }
+            components.takeIf { it.isNotEmpty() }?.let {
+                SubjectProgress(subjectLocalId = subjectId(classroom), components = it)
+            }
         }
 
         val classIds = classes.associateBy { it.id }
@@ -214,11 +237,31 @@ class OnlineStudentRepository(
     private fun subjectId(classroom: ClassDto) = "class-${classroom.id}"
 
     private fun normalizedGrade(grade: GradeDto): Double =
-        if (grade.maxScore > 0.0) (grade.score / grade.maxScore) * 10.0 else grade.score
+        if (grade.maxScore > 0.0) ((grade.score / grade.maxScore) * 100.0).coerceIn(0.0, 100.0)
+        else grade.score.coerceIn(0.0, 100.0)
+
+    private fun calculatedCurrentGrade(grades: List<GradeDto>, plan: EvaluationPlanDto?): GradeValue {
+        if (plan != null && plan.categories.isNotEmpty()) {
+            val byKey = grades.associateBy { it.activityKey }
+            var weightedPoints = 0.0
+            var evaluatedWeight = 0.0
+            plan.categories.forEach { category ->
+                val grade = byKey[category.categoryKey] ?: return@forEach
+                if (category.weight <= 0.0) return@forEach
+                weightedPoints += normalizedGrade(grade) * category.weight
+                evaluatedWeight += category.weight
+            }
+            return if (evaluatedWeight <= 0.0) GradeValue.notEvaluated()
+            else GradeValue.graded((weightedPoints / evaluatedWeight).coerceIn(0.0, 100.0))
+        }
+
+        val summaries = grades.filter { it.activityKey.startsWith("category-") }
+        return averageGrade(summaries.ifEmpty { grades })
+    }
 
     private fun averageGrade(grades: List<GradeDto>): GradeValue {
         if (grades.isEmpty()) return GradeValue.notEvaluated()
-        return GradeValue.graded(grades.map(::normalizedGrade).average())
+        return GradeValue.graded(grades.map(::normalizedGrade).average().coerceIn(0.0, 100.0))
     }
 
     private fun attendancePercent(items: List<AttendanceDto>): Int {
