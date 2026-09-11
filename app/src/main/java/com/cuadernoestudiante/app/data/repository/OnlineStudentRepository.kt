@@ -132,7 +132,7 @@ class OnlineStudentRepository(
                 meta = meta(subjectId(classroom), classroom.id.toString()),
                 name = classroom.subject.ifBlank { classroom.name },
                 teacherName = "Docente",
-                currentGrade = calculatedCurrentGrade(grades, plan),
+                currentGrade = StudentGradeCalculator.calculatedCurrentGrade(grades, plan),
                 attendancePercent = serverPercent ?: attendancePercent(attendance),
             )
         }
@@ -151,7 +151,7 @@ class OnlineStudentRepository(
                         type = AssessmentType.ACTIVITY,
                         dueAt = LocalDateTime.now(),
                         status = AssessmentStatus.GRADED,
-                        grade = GradeValue.graded(normalizedGrade(grade)),
+                        grade = GradeValue.graded(StudentGradeCalculator.normalizedGrade(grade)),
                     )
                 }
         }
@@ -181,7 +181,7 @@ class OnlineStudentRepository(
                     ProgressComponent(
                         label = category.name,
                         weightPercent = category.weight.roundToInt().coerceIn(0, 100),
-                        value = grade?.let { GradeValue.graded(normalizedGrade(it)) } ?: GradeValue.notEvaluated(),
+                        value = grade?.let { GradeValue.graded(StudentGradeCalculator.normalizedGrade(it)) } ?: GradeValue.notEvaluated(),
                     )
                 }
             } else {
@@ -189,7 +189,7 @@ class OnlineStudentRepository(
                     ProgressComponent(
                         label = grade.category.ifBlank { grade.activityName },
                         weightPercent = 0,
-                        value = GradeValue.graded(normalizedGrade(grade)),
+                        value = GradeValue.graded(StudentGradeCalculator.normalizedGrade(grade)),
                     )
                 }
             }
@@ -235,34 +235,6 @@ class OnlineStudentRepository(
     }
 
     private fun subjectId(classroom: ClassDto) = "class-${classroom.id}"
-
-    private fun normalizedGrade(grade: GradeDto): Double =
-        if (grade.maxScore > 0.0) ((grade.score / grade.maxScore) * 100.0).coerceIn(0.0, 100.0)
-        else grade.score.coerceIn(0.0, 100.0)
-
-    private fun calculatedCurrentGrade(grades: List<GradeDto>, plan: EvaluationPlanDto?): GradeValue {
-        if (plan != null && plan.categories.isNotEmpty()) {
-            val byKey = grades.associateBy { it.activityKey }
-            var weightedPoints = 0.0
-            var evaluatedWeight = 0.0
-            plan.categories.forEach { category ->
-                val grade = byKey[category.categoryKey] ?: return@forEach
-                if (category.weight <= 0.0) return@forEach
-                weightedPoints += normalizedGrade(grade) * category.weight
-                evaluatedWeight += category.weight
-            }
-            return if (evaluatedWeight <= 0.0) GradeValue.notEvaluated()
-            else GradeValue.graded((weightedPoints / evaluatedWeight).coerceIn(0.0, 100.0))
-        }
-
-        val summaries = grades.filter { it.activityKey.startsWith("category-") }
-        return averageGrade(summaries.ifEmpty { grades })
-    }
-
-    private fun averageGrade(grades: List<GradeDto>): GradeValue {
-        if (grades.isEmpty()) return GradeValue.notEvaluated()
-        return GradeValue.graded(grades.map(::normalizedGrade).average().coerceIn(0.0, 100.0))
-    }
 
     private fun attendancePercent(items: List<AttendanceDto>): Int {
         if (items.isEmpty()) return 0
