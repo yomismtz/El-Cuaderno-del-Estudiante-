@@ -56,6 +56,12 @@ class OnlineStudentRepository(
     private suspend fun loadSnapshot(): StudentDataSnapshot {
         val me = backend.api.me()
         val classes = backend.api.classes()
+        val institutionName = if (me.institutionId != null) {
+            runCatching { backend.api.institution().name }
+                .getOrElse { "Institución ${me.institutionId}" }
+        } else {
+            ""
+        }
         val now = System.currentTimeMillis()
         val accountId = me.id.toString()
         val studentId = me.id.toString()
@@ -153,7 +159,7 @@ class OnlineStudentRepository(
                 meta = meta("profile-${me.id}", me.id.toString()),
                 name = me.fullName,
                 enrollmentId = me.email,
-                school = me.institutionId?.let { "Institución $it" }.orEmpty(),
+                school = institutionName,
                 group = classes.joinToString(", ") { it.name }.ifBlank { "Sin clase vinculada" },
                 educationLevel = "",
                 schoolYear = classes.map { it.periodName }.filter { it.isNotBlank() }.distinct().joinToString(", "),
