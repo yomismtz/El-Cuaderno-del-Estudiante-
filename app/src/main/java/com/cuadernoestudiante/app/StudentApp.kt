@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.cuadernoestudiante.app.network.CentralBackend
 import com.cuadernoestudiante.app.ui.navigation.AppDestination
 import com.cuadernoestudiante.app.ui.navigation.ExtraRoute
 import com.cuadernoestudiante.app.ui.screens.common.PlaceholderScreen
@@ -26,6 +27,7 @@ import com.cuadernoestudiante.app.ui.theme.AgendaThemeStyle
 @Composable
 fun StudentApp(
     viewModel: StudentViewModel,
+    backend: CentralBackend,
     currentTheme: AgendaThemeStyle,
     classCode: String,
     onThemeChange: (AgendaThemeStyle) -> Unit,
@@ -85,7 +87,7 @@ fun StudentApp(
                         composable(ExtraRoute.Attendance) { PlaceholderScreen("Asistencia", "Consulta de asistencia; el estudiante no puede modificar registros.") }
                         composable(ExtraRoute.Schedule) { PlaceholderScreen("Horario", "Horario de solo lectura de las clases vinculadas por código.") }
                         composable(ExtraRoute.Notes) { StudentNotesScreen() }
-                        composable(ExtraRoute.TeamReport) { AnonymousTeamReportScreen() }
+                        composable(ExtraRoute.TeamReport) { AnonymousTeamReportScreen(backend = backend) }
                     }
                 }
             }
