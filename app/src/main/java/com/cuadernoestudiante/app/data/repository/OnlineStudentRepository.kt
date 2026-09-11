@@ -2,6 +2,7 @@ package com.cuadernoestudiante.app.data.repository
 
 import com.cuadernoestudiante.app.core.model.*
 import com.cuadernoestudiante.app.network.AttendanceDto
+import com.cuadernoestudiante.app.network.AttendanceSummaryDto
 import com.cuadernoestudiante.app.network.CentralBackend
 import com.cuadernoestudiante.app.network.ClassDto
 import com.cuadernoestudiante.app.network.GradeDto
@@ -25,13 +26,9 @@ class OnlineStudentRepository(
     private val _snapshot = MutableStateFlow(emptySnapshot())
     override val snapshot: StateFlow<StudentDataSnapshot> = _snapshot.asStateFlow()
 
-    init {
-        refreshFromServer()
-    }
+    init { refreshFromServer() }
 
-    override fun resetDemoData() {
-        refreshFromServer()
-    }
+    override fun resetDemoData() { refreshFromServer() }
 
     override fun markAssessmentCompleted(localId: String, completed: Boolean) {
         val current = _snapshot.value
@@ -39,9 +36,7 @@ class OnlineStudentRepository(
             assessments = current.assessments.map { assessment ->
                 if (assessment.meta.localId == localId && assessment.status != AssessmentStatus.GRADED) {
                     assessment.copy(status = if (completed) AssessmentStatus.SUBMITTED else AssessmentStatus.PENDING)
-                } else {
-                    assessment
-                }
+                } else assessment
             }
         )
     }
@@ -49,8 +44,7 @@ class OnlineStudentRepository(
     fun refreshFromServer() {
         if (backend.tokenStore.accessToken.isNullOrBlank()) return
         scope.launch {
-            runCatching { loadSnapshot() }
-                .onSuccess { _snapshot.value = it }
+            runCatching { loadSnapshot() }.onSuccess { _snapshot.value = it }
         }
     }
 
@@ -58,11 +52,8 @@ class OnlineStudentRepository(
         val me = backend.api.me()
         val classes = backend.api.classes()
         val institutionName = if (me.institutionId != null) {
-            runCatching { backend.api.institution().name }
-                .getOrElse { "Institución ${me.institutionId}" }
-        } else {
-            ""
-        }
+            runCatching { backend.api.institution().name }.getOrElse { "Institución ${me.institutionId}" }
+        } else ""
         val scheduleRows = runCatching { backend.api.schedule() }.getOrDefault(emptyList())
         val now = System.currentTimeMillis()
         val accountId = me.id.toString()
@@ -80,6 +71,8 @@ class OnlineStudentRepository(
 
         val gradesByClass = mutableMapOf<Int, List<GradeDto>>()
         val attendanceByClass = mutableMapOf<Int, List<AttendanceDto>>()
+        val attendanceSummaryByClass = mutableMapOf<Int, AttendanceSummaryDto>()
+        val sessionTitlesByClass = mutableMapOf<Int, Map<String, String>>()
         val notices = mutableListOf<Notice>()
 
         classes.forEach { classroom ->
@@ -87,6 +80,10 @@ class OnlineStudentRepository(
             val classAttendance = backend.api.attendance(classroom.id)
             gradesByClass[classroom.id] = classGrades
             attendanceByClass[classroom.id] = classAttendance
+            runCatching { backend.api.attendanceSummary(classroom.id) }
+                .getOrNull()?.let { attendanceSummaryByClass[classroom.id] = it }
+            val sessions = runCatching { backend.api.attendanceSessions(classroom.id) }.getOrDefault(emptyList())
+            sessionTitlesByClass[classroom.id] = sessions.associate { it.date to it.title }
 
             backend.api.notices(classroom.id).forEach { notice ->
                 notices += Notice(
@@ -105,22 +102,20 @@ class OnlineStudentRepository(
         val subjects = classes.map { classroom ->
             val grades = gradesByClass[classroom.id].orEmpty()
             val attendance = attendanceByClass[classroom.id].orEmpty()
+            val serverPercent = attendanceSummaryByClass[classroom.id]?.attendancePercent?.roundToInt()?.coerceIn(0, 100)
             Subject(
                 meta = meta(subjectId(classroom), classroom.id.toString()),
                 name = classroom.subject.ifBlank { classroom.name },
                 teacherName = "Docente",
                 currentGrade = averageGrade(grades),
-                attendancePercent = attendancePercent(attendance),
+                attendancePercent = serverPercent ?: attendancePercent(attendance),
             )
         }
 
         val assessments = classes.flatMap { classroom ->
             gradesByClass[classroom.id].orEmpty().map { grade ->
                 Assessment(
-                    meta = meta(
-                        "grade-${classroom.id}-${grade.activityKey}",
-                        "${classroom.id}:${grade.activityKey}",
-                    ),
+                    meta = meta("grade-${classroom.id}-${grade.activityKey}", "${classroom.id}:${grade.activityKey}"),
                     subjectLocalId = subjectId(classroom),
                     title = grade.activityName,
                     type = AssessmentType.ACTIVITY,
@@ -132,12 +127,14 @@ class OnlineStudentRepository(
         }
 
         val attendance = classes.flatMap { classroom ->
+            val titles = sessionTitlesByClass[classroom.id].orEmpty()
             attendanceByClass[classroom.id].orEmpty().mapIndexed { index, item ->
                 AttendanceRecord(
                     meta = meta("attendance-${classroom.id}-${item.date}-$index"),
                     subjectLocalId = subjectId(classroom),
                     date = runCatching { LocalDate.parse(item.date) }.getOrElse { LocalDate.now() },
                     status = attendanceStatus(item.status),
+                    sessionTitle = titles[item.date] ?: "Clase",
                 )
             }
         }
@@ -240,15 +237,7 @@ class OnlineStudentRepository(
                 syncStatus = SyncStatus.SYNCED,
             )
             return StudentDataSnapshot(
-                profile = StudentProfile(
-                    meta = meta,
-                    name = "Cargando…",
-                    enrollmentId = "",
-                    school = "",
-                    group = "",
-                    educationLevel = "",
-                    schoolYear = "",
-                ),
+                profile = StudentProfile(meta, "Cargando…", "", "", "", "", ""),
                 subjects = emptyList(),
                 assessments = emptyList(),
                 attendance = emptyList(),
