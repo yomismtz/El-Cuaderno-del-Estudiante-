@@ -2,6 +2,18 @@
 
 Aplicación Android para estudiantes del ecosistema online formado por **ProfeCuaderno**, **El Cuaderno del Estudiante** y **El Escritorio del Director**.
 
+## Descarga Android
+
+Página pública del estudiante:
+
+https://profecuaderno-api-production.up.railway.app/estudiante
+
+Descarga directa del APK instalable más reciente:
+
+https://github.com/yomismtz/El-Cuaderno-del-Estudiante-/releases/download/android-latest/El-Cuaderno-del-Estudiante.apk
+
+El APK publicado por este flujo es una compilación de prueba para instalación directa. Android puede solicitar autorización para instalar aplicaciones desde el navegador o gestor de archivos.
+
 ## Estado actual
 
 La app ya utiliza el backend central real. El estudiante puede:
@@ -32,10 +44,7 @@ Política de privacidad conjunta: https://profecuaderno-api-production.up.railwa
 
 ## Compilación
 
-El workflow `.github/workflows/android.yml` ejecuta las pruebas y genera dos artefactos de prueba:
-
-- `app-debug.apk`
-- `app-debug.aab`
+El workflow `.github/workflows/android.yml` ejecuta pruebas, genera APK/AAB de prueba y actualiza una descarga pública estable del APK cuando cambia `main`.
 
 ## Privacidad
 
